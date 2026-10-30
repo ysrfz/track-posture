@@ -4,14 +4,16 @@ A menu bar app that watches your posture through the built-in camera and fades a
 
 ## How it works
 
-On calibration it records four numbers from your nose and shoulder positions while you sit up straight:
+On calibration it records four numbers from your ear and shoulder positions while you sit up straight:
 
 | Signal | Measures | Bad when |
 |---|---|---|
-| height | nose height above the shoulder line ÷ shoulder width | below 90% of baseline (slouch / head drop) |
+| earHeight | ear height above the shoulder line ÷ shoulder width | below 90% of baseline (slouch / head drop) |
 | width | apparent shoulder width | above 115% of baseline (leaning in) |
 | tilt | shoulder line angle | more than 8° off baseline (sideways lean) |
 | shoulderY | shoulder line height in the frame | more than 5% of frame height below baseline (sliding down the chair) |
+
+`earHeight` uses the ears rather than the nose because they sit near the axis your head nods around: glancing down at a phone or a laptop below your monitor barely moves them, while a real slouch drops the whole head. If neither ear is visible (e.g. covered by hair or a hood), tracking pauses as if you'd stepped away.
 
 `shoulderY` catches sliding down the seat with your head still against the backrest, which leaves the other three unchanged. It assumes the camera hasn't moved, so recalibrate after changing the lid angle, laptop position, or chair height.
 

@@ -17,11 +17,11 @@ let awaySeconds = 2.0
 let debug = CommandLine.arguments.contains("--debug")
 
 struct Posture: Codable {
-    var height, width, tilt, shoulderY: Double
+    var earHeight, width, tilt, shoulderY: Double
 
     func blended(with p: Posture, _ k: Double = 0.2) -> Posture {
         func mix(_ a: Double, _ b: Double) -> Double { a + (b - a) * k }
-        return Posture(height: mix(height, p.height), width: mix(width, p.width), tilt: mix(tilt, p.tilt), shoulderY: mix(shoulderY, p.shoulderY))
+        return Posture(earHeight: mix(earHeight, p.earHeight), width: mix(width, p.width), tilt: mix(tilt, p.tilt), shoulderY: mix(shoulderY, p.shoulderY))
     }
 }
 
@@ -75,14 +75,17 @@ final class Camera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         guard let image = CMSampleBufferGetImageBuffer(buffer) else { return nil }
         try? VNImageRequestHandler(cvPixelBuffer: image).perform([request])
         guard let joints = try? request.results?.first?.recognizedPoints(.all),
-              let nose = joints[.nose], let left = joints[.leftShoulder], let right = joints[.rightShoulder],
-              [nose, left, right].allSatisfy({ $0.confidence > 0.3 }) else { return nil }
+              let left = joints[.leftShoulder], let right = joints[.rightShoulder],
+              left.confidence > 0.3, right.confidence > 0.3 else { return nil }
+        // Ears sit near the head's nod axis, so looking down barely moves them while slouching drops them.
+        let ears = [joints[.leftEar], joints[.rightEar]].compactMap { $0 }.filter { $0.confidence > 0.3 }
+        guard !ears.isEmpty else { return nil }
         let (w, h) = (CVPixelBufferGetWidth(image), CVPixelBufferGetHeight(image))
-        let n = VNImagePointForNormalizedPoint(nose.location, w, h)
         let l = VNImagePointForNormalizedPoint(left.location, w, h)
         let r = VNImagePointForNormalizedPoint(right.location, w, h)
+        let earY = ears.map { VNImagePointForNormalizedPoint($0.location, w, h).y }.reduce(0, +) / CGFloat(ears.count)
         let width = hypot(l.x - r.x, l.y - r.y)
-        return Posture(height: (n.y - (l.y + r.y) / 2) / width,
+        return Posture(earHeight: (earY - (l.y + r.y) / 2) / width,
                        width: width,
                        tilt: atan2(l.y - r.y, abs(l.x - r.x)) * 180 / .pi,
                        shoulderY: (left.location.y + right.location.y) / 2)
@@ -152,7 +155,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         guard let s = smoothed, let base = baseline else { badSince = nil; return setGlow(0) }
         let k = badSince == nil ? 1 : recoveryFraction
-        let bad = s.height < base.height * (1 - slouchTolerance * k)
+        let bad = s.earHeight < base.earHeight * (1 - slouchTolerance * k)
             || s.width > base.width * (1 + leanInTolerance * k)
             || abs(s.tilt - base.tilt) > maxTiltDegrees * k
             || s.shoulderY < base.shoulderY - sinkTolerance * k
@@ -164,8 +167,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if level > 0, glowLevel == 0 { day.alerts += 1 }
         setGlow(level)
         if debug {
-            print(String(format: "height %.2f/%.2f  width %.0f/%.0f  tilt %+.1f/%+.1f  shoulderY %.2f/%.2f  %@  glow %.2f",
-                         s.height, base.height, s.width, base.width, s.tilt, base.tilt, s.shoulderY, base.shoulderY, bad ? "BAD" : "ok ", level))
+            print(String(format: "ears %.2f/%.2f  width %.0f/%.0f  tilt %+.1f/%+.1f  shoulderY %.2f/%.2f  %@  glow %.2f",
+                         s.earHeight, base.earHeight, s.width, base.width, s.tilt, base.tilt, s.shoulderY, base.shoulderY, bad ? "BAD" : "ok ", level))
         }
     }
 
