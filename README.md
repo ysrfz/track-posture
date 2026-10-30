@@ -4,13 +4,16 @@ A menu bar app that watches your posture through the built-in camera and fades a
 
 ## How it works
 
-On calibration it records three numbers from your nose and shoulder positions while you sit up straight:
+On calibration it records four numbers from your nose and shoulder positions while you sit up straight:
 
 | Signal | Measures | Bad when |
 |---|---|---|
 | height | nose height above the shoulder line ÷ shoulder width | below 90% of baseline (slouch / head drop) |
 | width | apparent shoulder width | above 115% of baseline (leaning in) |
 | tilt | shoulder line angle | more than 8° off baseline (sideways lean) |
+| shoulderY | shoulder line height in the frame | more than 5% of frame height below baseline (sliding down the chair) |
+
+`shoulderY` catches sliding down the seat with your head still against the backrest, which leaves the other three unchanged. It assumes the camera hasn't moved, so recalibrate after changing the lid angle, laptop position, or chair height.
 
 Once flagged, you have to recover half of each tolerance to clear it, so hovering at the boundary doesn't restart the timer. After 10s of continuous bad posture the glow appears at 15% opacity and ramps to 40% over 30s. It works over fullscreen apps, shows on every display, and is excluded from screen sharing.
 

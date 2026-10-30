@@ -7,6 +7,7 @@ import Vision
 let slouchTolerance = 0.10
 let leanInTolerance = 0.15
 let maxTiltDegrees = 8.0
+let sinkTolerance = 0.05  // fraction of frame height
 let recoveryFraction = 0.5  // once flagged, tolerances shrink so borderline frames can't reset the grace timer
 let graceSeconds = 10.0
 let rampSeconds = 30.0
@@ -16,10 +17,11 @@ let awaySeconds = 2.0
 let debug = CommandLine.arguments.contains("--debug")
 
 struct Posture: Codable {
-    var height, width, tilt: Double
+    var height, width, tilt, shoulderY: Double
 
     func blended(with p: Posture, _ k: Double = 0.2) -> Posture {
-        Posture(height: height + (p.height - height) * k, width: width + (p.width - width) * k, tilt: tilt + (p.tilt - tilt) * k)
+        func mix(_ a: Double, _ b: Double) -> Double { a + (b - a) * k }
+        return Posture(height: mix(height, p.height), width: mix(width, p.width), tilt: mix(tilt, p.tilt), shoulderY: mix(shoulderY, p.shoulderY))
     }
 }
 
@@ -82,7 +84,8 @@ final class Camera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let width = hypot(l.x - r.x, l.y - r.y)
         return Posture(height: (n.y - (l.y + r.y) / 2) / width,
                        width: width,
-                       tilt: atan2(l.y - r.y, abs(l.x - r.x)) * 180 / .pi)
+                       tilt: atan2(l.y - r.y, abs(l.x - r.x)) * 180 / .pi,
+                       shoulderY: (left.location.y + right.location.y) / 2)
     }
 }
 
@@ -152,6 +155,7 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let bad = s.height < base.height * (1 - slouchTolerance * k)
             || s.width > base.width * (1 + leanInTolerance * k)
             || abs(s.tilt - base.tilt) > maxTiltDegrees * k
+            || s.shoulderY < base.shoulderY - sinkTolerance * k
         day.tracked += dt
         if !bad { day.upright += dt }
         badSince = bad ? (badSince ?? now) : nil
@@ -160,8 +164,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if level > 0, glowLevel == 0 { day.alerts += 1 }
         setGlow(level)
         if debug {
-            print(String(format: "height %.2f/%.2f  width %.0f/%.0f  tilt %+.1f/%+.1f  %@  glow %.2f",
-                         s.height, base.height, s.width, base.width, s.tilt, base.tilt, bad ? "BAD" : "ok ", level))
+            print(String(format: "height %.2f/%.2f  width %.0f/%.0f  tilt %+.1f/%+.1f  shoulderY %.2f/%.2f  %@  glow %.2f",
+                         s.height, base.height, s.width, base.width, s.tilt, base.tilt, s.shoulderY, base.shoulderY, bad ? "BAD" : "ok ", level))
         }
     }
 
