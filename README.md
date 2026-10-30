@@ -12,7 +12,7 @@ On calibration it records three numbers from your nose and shoulder positions wh
 | width | apparent shoulder width | above 115% of baseline (leaning in) |
 | tilt | shoulder line angle | more than 8° off baseline (sideways lean) |
 
-Once flagged, you have to recover half of each tolerance to clear it, so hovering at the boundary doesn't restart the timer. After 20s of continuous bad posture the glow appears at 15% opacity and ramps to 40% over 30s. It works over fullscreen apps, shows on every display, and is excluded from screen sharing.
+Once flagged, you have to recover half of each tolerance to clear it, so hovering at the boundary doesn't restart the timer. After 10s of continuous bad posture the glow appears at 15% opacity and ramps to 40% over 30s. It works over fullscreen apps, shows on every display, and is excluded from screen sharing.
 
 The camera stops while the screen is locked or the app is paused. Time away from the desk isn't counted.
 
